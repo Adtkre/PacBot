@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "PacBot",
+  "version": "1.0",
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.freepacman.org/*", "*://freepacman.org/*"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "host_permissions": ["*://*.freepacman.org/*", "*://freepacman.org/*"]
+}
