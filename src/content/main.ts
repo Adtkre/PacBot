@@ -107,7 +107,7 @@ function loop() {
             }
 
             if (targetNode) {
-                let dir: Direction | null = null;
+                let dirs: Direction[] = [];
 
                 let cx = Math.round(fracX);
                 let cy = Math.round(fracY);
@@ -122,13 +122,22 @@ function loop() {
                 if (dx < -14) dx += 28;
 
                 if (Math.abs(dx) > 0) {
-                    dir = dx > 0 ? 'RIGHT' : 'LEFT';
+                    dirs.push(dx > 0 ? 'RIGHT' : 'LEFT');
                 } else if (Math.abs(dy) > 0) {
-                    dir = dy > 0 ? 'DOWN' : 'UP';
+                    dirs.push(dy > 0 ? 'DOWN' : 'UP');
                 } else {
                     // We share the same integer tile as target.
-                    // Look ahead to the next node in the path to corner/buffer correctly!
-                    if (currentPath.length > 1) {
+                    // Are we physically aligned enough on the axis we WERE traveling on?
+                    let isAligned = true;
+                    if (currentDir === 'LEFT' && (fracX - cx) > 0.1) isAligned = false;
+                    if (currentDir === 'RIGHT' && (cx - fracX) > 0.1) isAligned = false;
+                    if (currentDir === 'UP' && (fracY - cy) > 0.1) isAligned = false;
+                    if (currentDir === 'DOWN' && (cy - fracY) > 0.1) isAligned = false;
+
+                    if (!isAligned && currentDir) {
+                        dirs.push(currentDir);
+                    } else if (currentPath.length > 1) {
+                        // We are aligned! Look ahead into the next path segment to corner properly.
                         let nx = currentPath[1].x;
                         let ny = currentPath[1].y;
                         let ndx = nx - tx;
@@ -137,16 +146,16 @@ function loop() {
                         if (ndx > 14) ndx -= 28;
                         if (ndx < -14) ndx += 28;
 
-                        if (Math.abs(ndx) > 0) dir = ndx > 0 ? 'RIGHT' : 'LEFT';
-                        else if (Math.abs(ndy) > 0) dir = ndy > 0 ? 'DOWN' : 'UP';
+                        if (Math.abs(ndx) > 0) dirs.push(ndx > 0 ? 'RIGHT' : 'LEFT');
+                        else if (Math.abs(ndy) > 0) dirs.push(ndy > 0 ? 'DOWN' : 'UP');
                     } else {
                         // Fallback to fractional fine-tuning if it's the absolute last node
                         let fdx = tx - fracX;
                         let fdy = ty - fracY;
                         if (Math.abs(fdx) > Math.abs(fdy)) {
-                            dir = fdx > 0 ? 'RIGHT' : 'LEFT';
+                            dirs.push(fdx > 0 ? 'RIGHT' : 'LEFT');
                         } else {
-                            dir = fdy > 0 ? 'DOWN' : 'UP';
+                            dirs.push(fdy > 0 ? 'DOWN' : 'UP');
                         }
                     }
                 }
@@ -154,10 +163,14 @@ function loop() {
                 // Draw target node indicator
                 drawRect(targetNode.x * state.tileSizeX, targetNode.y * state.tileSizeY, state.tileSizeX, state.tileSizeY, 'rgba(255,100,0,0.5)');
 
-                if (dir && (now - lastCommandTime > 150 || dir !== currentDir)) {
-                    currentDir = dir;
+                // Dispatch commands
+                let activeDir = dirs.length > 0 ? dirs[0] : null;
+                if (activeDir && (now - lastCommandTime > 150 || activeDir !== currentDir)) {
+                    currentDir = activeDir;
                     lastCommandTime = now;
-                    sendCommand(dir);
+                    for (const d of dirs) {
+                        sendCommand(d);
+                    }
                 }
             }
         }
